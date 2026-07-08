@@ -4,21 +4,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +32,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -121,23 +129,74 @@ fun AlarmItemRow(
 
 @Composable
 fun AlarmListScreen(
-    modifier: Modifier = Modifier,
     alarmViewModel: AlarmViewModel = viewModel(modelClass = AlarmViewModel::class.java)
 ) {
 
     val alarmList by alarmViewModel.alarms.collectAsStateWithLifecycle()
 
-    // The equivalent of a RecyclerView
-    LazyColumn(modifier = modifier) {
-        // 'items' loops through your data collection and builds rows on demand
-        items(alarmList) { alarm ->
-            AlarmItemRow(
-                time = alarm.time,
-                repeatDays = alarm.days,
-                initialIsChecked = alarm.isEnabled,
-                onAlarmToggle = { isToggled ->
-                    // We will connect this to our background system later!
-                    println("Alarm ${alarm.id} changed to: $isToggled")
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(
+            items = alarmList,
+            key = { alarm -> alarm.id }
+        ) { alarm ->
+
+            // 1. Correct Mobile M3 state instantiation from the official docs
+            val swipeToDismissBoxState = rememberSwipeToDismissBoxState(
+                confirmValueChange = { value ->
+                    if (value == SwipeToDismissBoxValue.EndToStart) {
+                        alarmViewModel.deleteAlarm(alarm)
+                        true // Allow the item to be dismissed visually
+                    } else {
+                        false // Ignore swiping right
+                    }
+                }
+            )
+
+            // 2. Official Mobile Component Wrapper
+            SwipeToDismissBox(
+                state = swipeToDismissBoxState,
+                enableDismissFromStartToEnd = false,
+                enableDismissFromEndToStart = true,
+                backgroundContent = {
+
+                    val backgroundColor = lerp(
+                        Color.Transparent,
+                        MaterialTheme.colorScheme.errorContainer,
+                        swipeToDismissBoxState.progress
+                    )
+
+                    val textColor = lerp(
+                        MaterialTheme.colorScheme.onErrorContainer,
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        swipeToDismissBoxState.progress
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(backgroundColor)
+                            .padding(horizontal = 24.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+
+                        Text(
+                            text = "Delete",
+                            color = textColor,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                },
+                content = {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        AlarmItemRow(
+                            time = alarm.time,
+                            repeatDays = alarm.days,
+                            initialIsChecked = alarm.isEnabled,
+                            onAlarmToggle = { isToggled ->
+                                alarmViewModel.toggleAlarm(alarm, isToggled)
+                            }
+                        )
+                    }
                 }
             )
         }

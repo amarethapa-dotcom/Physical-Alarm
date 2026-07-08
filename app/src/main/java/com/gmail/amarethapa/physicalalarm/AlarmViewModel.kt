@@ -13,7 +13,6 @@ import com.gmail.amarethapa.physicalalarm.data.room.AlarmRoomDatabase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -162,5 +161,15 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     fun dismissActiveRingtone() {
         val serviceIntent = Intent(context, AlarmService::class.java)
         context.stopService(serviceIntent)
+    }
+
+    fun deleteAlarm(alarm: AlarmEntity) {
+        viewModelScope.launch {
+            // 1. Cancel the OS AlarmManager window first so it stops ringing in the background
+            scheduleSystemAlarm(alarm.id, 0, 0, false, isEnabled = false)
+
+            // 2. Remove the row permanently from your Room SQLite table
+            alarmDao.deleteAlarm(alarm)
+        }
     }
 }
