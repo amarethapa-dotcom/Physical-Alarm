@@ -132,14 +132,22 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
 
         if (isEnabled) {
             // 4. Calculate the exact time target using a Calendar instance
+
             val calendar = Calendar.getInstance().apply {
                 timeInMillis = System.currentTimeMillis()
+
+                // 1. Explicitly set the AM or PM phase (0 for AM, 1 for PM)
                 set(Calendar.AM_PM, if (isAm) Calendar.AM else Calendar.PM)
-                set(Calendar.HOUR, hour)
+
+                // 2. Set the 12-hour value (0-11).
+                // Note: If hour is 12, Calendar.HOUR expects 0 (midnight/noon)
+                set(Calendar.HOUR, if (hour == 12) 0 else hour)
+
                 set(Calendar.MINUTE, minute)
                 set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
 
-                // If the time already passed today, roll it over to tomorrow automatically
+                // If the time already passed today, roll it over to tomorrow
                 if (before(Calendar.getInstance())) {
                     add(Calendar.DATE, 1)
                 }
