@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
@@ -24,8 +25,10 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,9 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gmail.amarethapa.physicalalarm.ui.AddAlarmBottomSheet
-import com.gmail.amarethapa.physicalalarm.ui.DayPickerGroup
 import com.gmail.amarethapa.physicalalarm.ui.theme.PhysicalAlarmTheme
-import kotlinx.coroutines.flow.map
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,6 +137,30 @@ fun AlarmListScreen(
 ) {
 
     val alarmList by alarmViewModel.alarms.collectAsStateWithLifecycle()
+    var alarmToDeleteId by remember { mutableStateOf<Int?>(null) }
+
+    if (alarmToDeleteId != null) {
+        AlertDialog(
+            onDismissRequest = { alarmToDeleteId = null },
+            title = { Text("Delete Alarm") },
+            text = { Text("Are you sure you want to delete this alarm?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        alarmToDeleteId?.let { alarmViewModel.deleteAlarm(it) }
+                        alarmToDeleteId = null
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { alarmToDeleteId = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(
@@ -147,13 +172,20 @@ fun AlarmListScreen(
             val swipeToDismissBoxState = rememberSwipeToDismissBoxState(
                 confirmValueChange = { value ->
                     if (value == SwipeToDismissBoxValue.EndToStart) {
-                        alarmViewModel.deleteAlarm(alarm.id)
-                        true // Allow the item to be dismissed visually
+                        alarmToDeleteId = alarm.id
+                        false // Don't dismiss yet, wait for dialog confirmation
                     } else {
                         false // Ignore swiping right
                     }
                 }
             )
+
+            // Reset swipe state if dialog is cancelled
+            LaunchedEffect(alarmToDeleteId) {
+                if (alarmToDeleteId == null && swipeToDismissBoxState.currentValue != SwipeToDismissBoxValue.Settled) {
+                    swipeToDismissBoxState.reset()
+                }
+            }
 
             // 2. Official Mobile Component Wrapper
             SwipeToDismissBox(
@@ -161,7 +193,6 @@ fun AlarmListScreen(
                 enableDismissFromStartToEnd = false,
                 enableDismissFromEndToStart = true,
                 backgroundContent = {
-
                     val backgroundColor = lerp(
                         Color.Transparent,
                         MaterialTheme.colorScheme.errorContainer,
@@ -169,8 +200,8 @@ fun AlarmListScreen(
                     )
 
                     val textColor = lerp(
-                        MaterialTheme.colorScheme.onErrorContainer,
                         MaterialTheme.colorScheme.onSurfaceVariant,
+                        MaterialTheme.colorScheme.onErrorContainer,
                         swipeToDismissBoxState.progress
                     )
 
@@ -185,7 +216,7 @@ fun AlarmListScreen(
                         Text(
                             text = "Delete",
                             color = textColor,
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
                 },
