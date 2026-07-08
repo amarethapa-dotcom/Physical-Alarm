@@ -39,7 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.gmail.amarethapa.physicalalarm.ui.AddAlarmBottomSheet
+import com.gmail.amarethapa.physicalalarm.ui.DayPickerGroup
 import com.gmail.amarethapa.physicalalarm.ui.theme.PhysicalAlarmTheme
+import kotlinx.coroutines.flow.map
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -144,7 +147,7 @@ fun AlarmListScreen(
             val swipeToDismissBoxState = rememberSwipeToDismissBoxState(
                 confirmValueChange = { value ->
                     if (value == SwipeToDismissBoxValue.EndToStart) {
-                        alarmViewModel.deleteAlarm(alarm)
+                        alarmViewModel.deleteAlarm(alarm.id)
                         true // Allow the item to be dismissed visually
                     } else {
                         false // Ignore swiping right
@@ -193,7 +196,7 @@ fun AlarmListScreen(
                             repeatDays = alarm.days,
                             initialIsChecked = alarm.isEnabled,
                             onAlarmToggle = { isToggled ->
-                                alarmViewModel.toggleAlarm(alarm, isToggled)
+                                alarmViewModel.toggleAlarm(alarm.id, isToggled)
                             }
                         )
                     }
@@ -205,6 +208,7 @@ fun AlarmListScreen(
 
 @Composable
 fun MainAlarmDashboardScreen(viewModel: AlarmViewModel = viewModel()) {
+
     // 1. Flag state controlling if the modal layer should be drawn down or up
     var showAddSheet by remember { mutableStateOf(false) }
 
@@ -217,24 +221,20 @@ fun MainAlarmDashboardScreen(viewModel: AlarmViewModel = viewModel()) {
             }
         }
     ) { paddingValues ->
+
         Box(modifier = Modifier.padding(paddingValues)) {
             // Renders list view
             AlarmListScreen(alarmViewModel = viewModel)
 
             // 2. Declarative visibility: If true, the bottom sheet automatically renders on screen
             if (showAddSheet) {
+
                 AddAlarmBottomSheet(
                     onDismissRequest = { showAddSheet = false },
-                    onTimeSelected = { hour, minute, isAm ->
-
-                        // Pass this directly to your ViewModel to construct and add a new alarm object
-                        val timeString =
-                            String.format("%02d:%02d %s", hour, minute, if (isAm) "AM" else "PM")
+                    onTimeSelected = { hour, minute, isAm, chosenDays ->
 
                         viewModel.saveNewAlarm(
-                            timeString,
-                            "Mon, Tue, Wed, Thu, Fri",
-                            hour, minute, isAm, isEnabled = true
+                            hour, minute, isAm, chosenDays, true
                         )
                     }
                 )

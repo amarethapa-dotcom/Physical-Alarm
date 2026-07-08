@@ -65,7 +65,7 @@
 
         <!-- Our dedicated dismiss overlay screen -->
         <activity
-            android:name=".DismissAlarmActivity"
+            android:name=".ui.DismissAlarmActivity"
             android:exported="false"
             android:launchMode="singleInstance"
             android:showOnLockScreen="true"

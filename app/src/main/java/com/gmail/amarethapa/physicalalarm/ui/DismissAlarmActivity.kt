@@ -1,20 +1,30 @@
-package com.gmail.amarethapa.physicalalarm
+package com.gmail.amarethapa.physicalalarm.ui
 
 import android.app.KeyguardManager
-import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gmail.amarethapa.physicalalarm.AlarmService
 
 class DismissAlarmActivity : ComponentActivity() {
 
@@ -82,7 +92,7 @@ class DismissAlarmActivity : ComponentActivity() {
         }
 
         // Dismiss the standard keyguard lock programmatically if it isn't password protected
-        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             keyguardManager.requestDismissKeyguard(this, null)
         }
