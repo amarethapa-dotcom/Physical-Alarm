@@ -40,7 +40,6 @@ class AlarmService : Service(), SensorEventListener {
     private var stepDetectorSensor: Sensor? = null
 
     private var stepsWalked = 0
-    private val TARGET_STEPS = 20 // Number of steps required to turn off alarm
 
     override fun onCreate() {
         super.onCreate()
@@ -152,9 +151,9 @@ class AlarmService : Service(), SensorEventListener {
             stepsWalked++
 
             // Broadcast the current step count to update your UI screen
-            updateUiWithRemainingSteps(TARGET_STEPS - stepsWalked)
+            updateUiWithRemainingSteps(AlarmConfig.TARGET_STEPS - stepsWalked)
 
-            if (stepsWalked >= TARGET_STEPS) {
+            if (stepsWalked >= AlarmConfig.TARGET_STEPS) {
                 stopAlarmAndDestroyService()
             }
         }
@@ -187,7 +186,7 @@ class AlarmService : Service(), SensorEventListener {
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("Alarm is ringing!")
-            .setContentText("Walk $TARGET_STEPS steps to dismiss")
+            .setContentText("Walk ${AlarmConfig.TARGET_STEPS} steps to dismiss")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

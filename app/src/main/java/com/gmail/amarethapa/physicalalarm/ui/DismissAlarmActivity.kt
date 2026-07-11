@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.gmail.amarethapa.physicalalarm.AlarmConfig
 import com.gmail.amarethapa.physicalalarm.AlarmService
 import com.gmail.amarethapa.physicalalarm.ui.theme.PhysicalAlarmTheme
 import kotlinx.coroutines.delay
@@ -54,7 +55,7 @@ class DismissAlarmActivity : ComponentActivity() {
 
         setContent {
             PhysicalAlarmTheme {
-                var remainingSteps by remember { mutableStateOf(20) } // Default TARGET_STEPS
+                var remainingSteps by remember { mutableStateOf(AlarmConfig.TARGET_STEPS) } // Default TARGET_STEPS
                 val context = LocalContext.current
 
                 // Long-press state for emergency dismiss
@@ -73,7 +74,12 @@ class DismissAlarmActivity : ComponentActivity() {
                             holdProgress = (elapsed.toFloat() / holdDurationMs).coerceAtMost(1f)
                             if (holdProgress >= 1f) {
                                 // Long-press completed - dismiss
-                                stopService(Intent(this@DismissAlarmActivity, AlarmService::class.java))
+                                stopService(
+                                    Intent(
+                                        this@DismissAlarmActivity,
+                                        AlarmService::class.java
+                                    )
+                                )
                                 finish()
                             }
                         }
@@ -87,8 +93,12 @@ class DismissAlarmActivity : ComponentActivity() {
                         override fun onReceive(context: Context?, intent: Intent?) {
                             when (intent?.action) {
                                 AlarmService.ACTION_STEP_UPDATE -> {
-                                    remainingSteps = intent.getIntExtra(AlarmService.EXTRA_REMAINING_STEPS, 20)
+                                    remainingSteps = intent.getIntExtra(
+                                        AlarmService.EXTRA_REMAINING_STEPS,
+                                        AlarmConfig.TARGET_STEPS
+                                    )
                                 }
+
                                 AlarmService.ACTION_ALARM_DISMISSED -> {
                                     finish()
                                 }

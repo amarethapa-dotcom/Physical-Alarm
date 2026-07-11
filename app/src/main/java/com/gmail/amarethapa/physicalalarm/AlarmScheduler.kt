@@ -82,7 +82,7 @@ object AlarmScheduler {
      * Calculates the next trigger time for a given alarm on a specific day of the week.
      * Uses explicit day offset calculation to avoid locale-dependent Calendar.set(DAY_OF_WEEK) issues.
      */
-    private fun calculateNextTriggerTime(alarm: AlarmEntity, targetDayOfWeek: Int): Long {
+    internal fun calculateNextTriggerTime(alarm: AlarmEntity, targetDayOfWeek: Int): Long {
         val now = Calendar.getInstance()
 
         val alarmTime = Calendar.getInstance().apply {
