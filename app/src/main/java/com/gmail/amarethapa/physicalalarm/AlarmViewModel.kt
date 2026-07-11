@@ -47,8 +47,10 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                 isEnabled = isEnabled
             )
 
-            alarmDao.insertOrUpdateAlarm(newAlarm)
-            AlarmScheduler.updateAlarmSchedule(context, newAlarm)
+            // Insert returns the auto-generated row ID — use it to schedule with the correct ID
+            val insertedId = alarmDao.insertOrUpdateAlarm(newAlarm)
+            val alarmWithRealId = newAlarm.copy(id = insertedId.toInt())
+            AlarmScheduler.updateAlarmSchedule(context, alarmWithRealId)
         }
     }
 

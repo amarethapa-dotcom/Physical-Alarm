@@ -1,8 +1,12 @@
 package com.gmail.amarethapa.physicalalarm
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -16,6 +20,8 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.gmail.amarethapa.physicalalarm.ui.DismissAlarmActivity
 
 class AlarmService : Service(), SensorEventListener {
 
@@ -23,6 +29,8 @@ class AlarmService : Service(), SensorEventListener {
         const val ACTION_STEP_UPDATE = "com.gmail.amarethapa.physicalalarm.STEP_UPDATE"
         const val ACTION_ALARM_DISMISSED = "com.gmail.amarethapa.physicalalarm.ALARM_DISMISSED"
         const val EXTRA_REMAINING_STEPS = "remaining_steps"
+        private const val NOTIFICATION_CHANNEL_ID = "alarm_service_channel"
+        private const val NOTIFICATION_ID = 1
     }
 
     private var mediaPlayer: MediaPlayer? = null
@@ -36,6 +44,9 @@ class AlarmService : Service(), SensorEventListener {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Create notification channel (required for Android 8+)
+        createNotificationChannel()
 
         // Initialize the hardware sensor manager
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -52,6 +63,21 @@ class AlarmService : Service(), SensorEventListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("AlarmService", "Alarm service started - Ringing!")
+
+        // Reset step count for fresh alarm trigger or service restart
+        stepsWalked = 0
+
+        // Promote to foreground immediately to prevent ANR/kill on Android 8+
+        val foregroundNotification = buildForegroundNotification()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIFICATION_ID,
+                foregroundNotification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, foregroundNotification)
+        }
 
         // 1. Initialize Audio Playback (Using default alarm sound)
         val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
@@ -104,10 +130,15 @@ class AlarmService : Service(), SensorEventListener {
         super.onDestroy()
         Log.d("AlarmService", "Alarm service stopped - Cleaning up.")
 
-        // 3. Clean up resources to prevent hardware battery drain/leaks
+        // Clean up resources to prevent hardware battery drain/leaks
         mediaPlayer?.stop()
         mediaPlayer?.release()
+        mediaPlayer = null
         vibrator?.cancel()
+        vibrator = null
+
+        // Unregister sensor listener to prevent sensor leak
+        sensorManager.unregisterListener(this)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -127,6 +158,42 @@ class AlarmService : Service(), SensorEventListener {
                 stopAlarmAndDestroyService()
             }
         }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                "Alarm Service",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Shows while your alarm is ringing"
+            }
+            val notificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun buildForegroundNotification(): android.app.Notification {
+        // Tapping the notification opens the dismiss screen
+        val dismissIntent = Intent(this, DismissAlarmActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("Alarm is ringing!")
+            .setContentText("Walk $TARGET_STEPS steps to dismiss")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .build()
     }
 
     private fun updateUiWithRemainingSteps(remainingSteps: Int) {

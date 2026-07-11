@@ -39,7 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.tooling.preview.Preview
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,21 +68,6 @@ fun MainAppEntry() {
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    PhysicalAlarmTheme {
-        Greeting("Hello Android")
-    }
-}
 
 @Composable
 fun AlarmItemRow(
@@ -91,8 +76,8 @@ fun AlarmItemRow(
     initialIsChecked: Boolean,
     onAlarmToggle: (Boolean) -> Unit // A Kotlin lambda callback
 ) {
-    // 1. Local UI State tracking if the switch is physically turned on/off
-    var isEnabled by remember { mutableStateOf(initialIsChecked) }
+    // Track the database value directly; update via callback to keep in sync
+    var isEnabled by remember(initialIsChecked) { mutableStateOf(initialIsChecked) }
 
     val textColor = if (isEnabled) {
         MaterialTheme.colorScheme.onSurface

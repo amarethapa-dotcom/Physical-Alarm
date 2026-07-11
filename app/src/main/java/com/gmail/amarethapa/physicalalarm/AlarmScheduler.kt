@@ -34,30 +34,79 @@ object AlarmScheduler {
                 continue
             }
 
-            // Calculate the exact upcoming occurrence for this targeted day of the week
-            val calendar = Calendar.getInstance().apply {
-                timeInMillis = System.currentTimeMillis()
-                set(Calendar.AM_PM, if (alarm.isAm) Calendar.AM else Calendar.PM)
-                set(Calendar.HOUR, if (alarm.hour == 12) 0 else alarm.hour)
-                set(Calendar.MINUTE, alarm.minute)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-
-                // Explicitly force the target day of the week configuration
-                set(Calendar.DAY_OF_WEEK, dayOfWeek)
-
-                // Critical adjustment: If the targeted day calculation resolves to a time
-                // that already ticked past earlier *this week*, push it exactly 7 days into the future.
-                if (before(Calendar.getInstance())) {
-                    add(Calendar.WEEK_OF_YEAR, 1)
-                }
-            }
+            val triggerTime = calculateNextTriggerTime(alarm, dayOfWeek)
 
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
+                triggerTime,
                 pendingIntent
             )
         }
+    }
+
+    /**
+     * Re-schedules a single alarm for its next occurrence after it fires.
+     * Called from AlarmReceiver after the alarm triggers.
+     */
+    fun scheduleNextOccurrence(context: Context, alarm: AlarmEntity) {
+        if (!alarm.isEnabled || alarm.repeatDays.isEmpty()) return
+
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        for (dayOfWeek in alarm.repeatDays) {
+            val intent = Intent(context, AlarmReceiver::class.java).apply {
+                putExtra("ALARM_ID", alarm.id)
+            }
+
+            val uniqueRequestCode = (alarm.id * 10) + dayOfWeek
+
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                uniqueRequestCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Always schedule for next week since the alarm just fired
+            val triggerTime = calculateNextTriggerTime(alarm, dayOfWeek)
+
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
+        }
+    }
+
+    /**
+     * Calculates the next trigger time for a given alarm on a specific day of the week.
+     * Uses explicit day offset calculation to avoid locale-dependent Calendar.set(DAY_OF_WEEK) issues.
+     */
+    private fun calculateNextTriggerTime(alarm: AlarmEntity, targetDayOfWeek: Int): Long {
+        val now = Calendar.getInstance()
+
+        val alarmTime = Calendar.getInstance().apply {
+            set(Calendar.AM_PM, if (alarm.isAm) Calendar.AM else Calendar.PM)
+            set(Calendar.HOUR, if (alarm.hour == 12) 0 else alarm.hour)
+            set(Calendar.MINUTE, alarm.minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        // Calculate how many days from today until the target day
+        val todayDayOfWeek = now.get(Calendar.DAY_OF_WEEK)
+        var daysUntilTarget = targetDayOfWeek - todayDayOfWeek
+        if (daysUntilTarget < 0) {
+            daysUntilTarget += 7
+        }
+
+        // If target day is today but the time has already passed, push to next week
+        if (daysUntilTarget == 0 && alarmTime.timeInMillis <= now.timeInMillis) {
+            daysUntilTarget = 7
+        }
+
+        alarmTime.add(Calendar.DAY_OF_YEAR, daysUntilTarget)
+
+        return alarmTime.timeInMillis
     }
 }

@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Release bundles should not be in version control
+app/release/
+*.aab

@@ -10,7 +10,15 @@ class AlarmConverters {
 
     @TypeConverter
     fun toDaysSet(data: String): Set<Int> {
-        if (data.isEmpty()) return emptySet()
-        return data.split(",").map { it.toInt() }.toSet()
+        if (data.isBlank()) return emptySet()
+        return try {
+            data.split(",")
+                .filter { it.isNotBlank() }
+                .map { it.trim().toInt() }
+                .toSet()
+        } catch (e: NumberFormatException) {
+            // Corrupted data fallback — return empty set rather than crash
+            emptySet()
+        }
     }
 }
