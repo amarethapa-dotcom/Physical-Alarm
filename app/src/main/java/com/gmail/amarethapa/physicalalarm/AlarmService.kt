@@ -3,6 +3,10 @@ package com.gmail.amarethapa.physicalalarm
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -13,10 +17,38 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 
-class AlarmService : Service() {
+class AlarmService : Service(), SensorEventListener {
+
+    companion object {
+        const val ACTION_STEP_UPDATE = "com.gmail.amarethapa.physicalalarm.STEP_UPDATE"
+        const val ACTION_ALARM_DISMISSED = "com.gmail.amarethapa.physicalalarm.ALARM_DISMISSED"
+        const val EXTRA_REMAINING_STEPS = "remaining_steps"
+    }
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+
+    private lateinit var sensorManager: SensorManager
+    private var stepDetectorSensor: Sensor? = null
+
+    private var stepsWalked = 0
+    private val TARGET_STEPS = 20 // Number of steps required to turn off alarm
+
+    override fun onCreate() {
+        super.onCreate()
+
+        // Initialize the hardware sensor manager
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
+
+        // Start listening immediately when the alarm triggers
+        stepDetectorSensor?.let {
+            sensorManager.registerListener(
+                this, it,
+                SensorManager.SENSOR_DELAY_FASTEST
+            )
+        }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("AlarmService", "Alarm service started - Ringing!")
@@ -79,4 +111,35 @@ class AlarmService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        // No-op
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+
+        if (event?.sensor?.type == Sensor.TYPE_STEP_DETECTOR) {
+            stepsWalked++
+
+            // Broadcast the current step count to update your UI screen
+            updateUiWithRemainingSteps(TARGET_STEPS - stepsWalked)
+
+            if (stepsWalked >= TARGET_STEPS) {
+                stopAlarmAndDestroyService()
+            }
+        }
+    }
+
+    private fun updateUiWithRemainingSteps(remainingSteps: Int) {
+        val intent = Intent(ACTION_STEP_UPDATE).apply {
+            putExtra(EXTRA_REMAINING_STEPS, remainingSteps)
+            setPackage(packageName)
+        }
+        sendBroadcast(intent)
+    }
+
+    private fun stopAlarmAndDestroyService() {
+        sensorManager.unregisterListener(this)
+        sendBroadcast(Intent(ACTION_ALARM_DISMISSED).apply { setPackage(packageName) })
+        stopSelf()
+    }
 }
