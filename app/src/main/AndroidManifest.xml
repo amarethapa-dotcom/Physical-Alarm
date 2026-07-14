@@ -13,8 +13,9 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!-- Required to listen for the device startup broadcast -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Required for Android 10 (API 29) and higher -->
+    <!-- Required for step detection on Android 10 (API 29) and higher -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
     <!-- Required to keep the alarm buzzing even when the screen is locked -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
