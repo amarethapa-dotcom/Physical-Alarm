@@ -1,8 +1,11 @@
 package com.gmail.amarethapa.physicalalarm
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -16,6 +19,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import androidx.core.app.NotificationCompat
 
 class AlarmService : Service(), SensorEventListener {
 
@@ -25,6 +29,9 @@ class AlarmService : Service(), SensorEventListener {
         const val EXTRA_REMAINING_STEPS = "remaining_steps"
     }
 
+    private val NOTIFICATION_ID = 1001
+    private val CHANNEL_ID = "alarm_channel"
+
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
 
@@ -33,6 +40,43 @@ class AlarmService : Service(), SensorEventListener {
 
     private var stepsWalked = 0
     private val TARGET_STEPS = 20 // Number of steps required to turn off alarm
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Alarm Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Plays alarm sound and vibrates when the physical alarm triggers."
+            }
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun startServiceAsForeground() {
+        createNotificationChannel()
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Physical Alarm Ringing")
+            .setContentText("Walk 20 steps to dismiss this alarm.")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOngoing(true)
+            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -52,6 +96,7 @@ class AlarmService : Service(), SensorEventListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("AlarmService", "Alarm service started - Ringing!")
+        startServiceAsForeground()
 
         // 1. Initialize Audio Playback (Using default alarm sound)
         val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)

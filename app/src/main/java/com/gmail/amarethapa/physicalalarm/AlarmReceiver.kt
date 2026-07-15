@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.gmail.amarethapa.physicalalarm.ui.DismissAlarmActivity
 
 class AlarmReceiver : BroadcastReceiver() {
@@ -15,7 +16,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
             // 1. Start background music playback
             val serviceIntent = Intent(ctx, AlarmService::class.java)
-            ctx.startService(serviceIntent)
+            ContextCompat.startForegroundService(ctx, serviceIntent)
 
             // 2. Launch the full screen overlay display interface
             val overlayIntent = Intent(ctx, DismissAlarmActivity::class.java).apply {
